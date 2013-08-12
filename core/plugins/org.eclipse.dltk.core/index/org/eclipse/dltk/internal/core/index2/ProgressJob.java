@@ -17,6 +17,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.dltk.internal.core.search.processing.JobManager;
 import org.eclipse.dltk.internal.core.util.Messages;
+import org.eclipse.osgi.util.NLS;
 
 public class ProgressJob extends Job {
 
@@ -57,7 +58,13 @@ public class ProgressJob extends Job {
 			schedule();
 		}
 		if (monitor != null) {
-			monitor.subTask(message);
+			// show the number of remaining jobs in the subtask message
+			StringBuilder fullMessage = new StringBuilder();
+			fullMessage.append(NLS.bind(Messages.manager_filesToIndex,
+					jobManager.awaitingJobsCount()));
+			fullMessage.append(": "); //$NON-NLS-1$
+			fullMessage.append(message);
+			monitor.subTask(fullMessage.toString());
 		}
 	}
 }

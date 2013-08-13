@@ -58,13 +58,11 @@ public class ProgressJob extends Job {
 			schedule();
 		}
 		if (monitor != null) {
-			// show the number of remaining jobs in the subtask message
-			StringBuilder fullMessage = new StringBuilder();
-			fullMessage.append(NLS.bind(Messages.manager_filesToIndex,
+			// show/update the number of remaining jobs
+			monitor.setTaskName(NLS.bind(Messages.manager_filesToIndex,
 					jobManager.awaitingJobsCount()));
-			fullMessage.append(": "); //$NON-NLS-1$
-			fullMessage.append(message);
-			monitor.subTask(fullMessage.toString());
+			// notify the monitor that a new subtask is beginning
+			monitor.subTask(message);
 		}
 	}
 }

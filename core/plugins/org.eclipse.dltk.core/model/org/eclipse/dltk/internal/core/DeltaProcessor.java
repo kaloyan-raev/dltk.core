@@ -2831,52 +2831,11 @@ public class DeltaProcessor {
 					ProjectIndexerManager.removeLibrary(scriptProject, jarPath);
 					break;
 				}
-				break;
 			}
 			int kind = delta.getKind();
 			if (kind == IResourceDelta.ADDED || kind == IResourceDelta.REMOVED) {
 				IProjectFragment root = (IProjectFragment) element;
 				this.updateRootIndex(root, Path.EMPTY, delta);
-				break;
-			}
-			// don't break as packages of the package fragment root can be
-			// indexed below
-		case IModelElement.SCRIPT_FOLDER:
-			switch (delta.getKind()) {
-			case IResourceDelta.ADDED:
-			case IResourceDelta.REMOVED:
-				IScriptFolder pkg = null;
-				if (element instanceof IProjectFragment) {
-					IProjectFragment root = (IProjectFragment) element;
-					pkg = root.getScriptFolder(Path.EMPTY);
-				} else {
-					pkg = (IScriptFolder) element;
-				}
-				RootInfo rootInfo = this.rootInfo(pkg.getParent().getPath(),
-						delta.getKind());
-				boolean isSource = rootInfo == null // if null, defaults
-						// to
-						// source
-						|| rootInfo.entryKind == IBuildpathEntry.BPE_SOURCE;
-				IResourceDelta[] children = delta.getAffectedChildren();
-				for (int i = 0, length = children.length; i < length; i++) {
-					IResourceDelta child = children[i];
-					IResource resource = child.getResource();
-					// TODO (philippe) Why do this? Every child is added
-					// anyway
-					// as the delta is walked
-					if (resource instanceof IFile) {
-						String name = resource.getName();
-						if (isSource) {
-							if (Util.isValidSourceModule(pkg, resource)) {
-								Openable cu = (Openable) pkg
-										.getSourceModule(name);
-								this.updateIndex(cu, child);
-							}
-						}
-					}
-				}
-				break;
 			}
 			break;
 		case IModelElement.BINARY_MODULE:

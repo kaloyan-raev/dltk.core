@@ -35,8 +35,35 @@ import org.eclipse.dltk.core.ISourceModuleInfoCache;
  */
 public class SourceModuleInfoCache implements ISourceModuleInfoCache,
 		IResourceChangeListener, IResourceDeltaVisitor {
+	/**
+	 * The cache capacity. When the cache size hits the capacity the cache
+	 * starts to remove the eldest entries.
+	 * 
+	 * <p>
+	 * The capacity is calculated based on the max heap size. The formula is
+	 * exponential, so the capacity is tiny when the max heap size is small
+	 * (around 256 MB) and grows significantly on bigger heap sizes.
+	 * </p>
+	 * 
+	 * <p>
+	 * It is important to keep the cache capacity small on smaller heap sizes,
+	 * because otherwise a lot of CPU time is spent in GC activities and the
+	 * cache has a significant negative performance effect.
+	 * </p>
+	 * 
+	 * <p>
+	 * Capacity values for some common heap sizes:
+	 * <ul>
+	 * <li>256 MB max heap - 529 capacity</li>
+	 * <li>512 MB max heap - 2,209 capacity</li>
+	 * <li>1 GB max heap - 9,025 capacity</li>
+	 * <li>2 GB max heap - 36,100 capacity</li>
+	 * </ul>
+	 * </p>
+	 */
 	@Internal
-	final int capacity = ModelCache.DEFAULT_ROOT_SIZE * 50;
+	final int capacity = (int) Math.pow(
+			Runtime.getRuntime().maxMemory() / 10000000, 2);
 
 	private final ReferenceQueue<ISourceModuleInfo> queue = new ReferenceQueue<ISourceModuleInfo>();
 

@@ -11,7 +11,7 @@ public class RuntimePerformanceMonitor {
 	public static final String IOREAD = "IO Read";
 	public static final String IOWRITE = "IO Write";
 
-	public static boolean RUNTIME_PERFORMANCE = true;
+	public static boolean RUNTIME_PERFORMANCE = false;
 
 	public static class DataEntry {
 		long count = 0;
@@ -35,23 +35,27 @@ public class RuntimePerformanceMonitor {
 
 	public static synchronized void updateData(String language, String kind,
 			long time, long value) {
-		Map<String, DataEntry> attrs = internalGetEntries(language);
-		DataEntry entry = attrs.get(kind);
-		if (entry == null) {
-			entry = new DataEntry();
-			attrs.put(kind, entry);
+		if (RUNTIME_PERFORMANCE) {
+			Map<String, DataEntry> attrs = internalGetEntries(language);
+			DataEntry entry = attrs.get(kind);
+			if (entry == null) {
+				entry = new DataEntry();
+				attrs.put(kind, entry);
+			}
+			entry.count++;
+			entry.total += value;
+			entry.time += time;
 		}
-		entry.count++;
-		entry.total += value;
-		entry.time += time;
 	}
 
 	public static synchronized void updateData(String language, String kind,
 			long time, long value, IEnvironment env) {
-		if (env != null) {
-			updateData(language, kind + " " + env.getName(), time, value);
+		if (RUNTIME_PERFORMANCE) {
+			if (env != null) {
+				updateData(language, kind + " " + env.getName(), time, value);
+			}
+			updateData(language, kind, time, value);
 		}
-		updateData(language, kind, time, value);
 	}
 
 	private static synchronized Map<String, DataEntry> internalGetEntries(
@@ -108,14 +112,18 @@ public class RuntimePerformanceMonitor {
 		}
 
 		public void done(String natureId, String string, long value) {
-			RuntimePerformanceMonitor.updateData(natureId, string, done(),
-					value);
+			if (RUNTIME_PERFORMANCE) {
+				RuntimePerformanceMonitor.updateData(natureId, string, done(),
+						value);
+			}
 		}
 
 		public void done(String natureId, String kind, long value,
 				IEnvironment environment) {
-			RuntimePerformanceMonitor.updateData(natureId, kind, done(), value,
-					environment);
+			if (RUNTIME_PERFORMANCE) {
+				RuntimePerformanceMonitor.updateData(natureId, kind, done(),
+						value, environment);
+			}
 		}
 	}
 

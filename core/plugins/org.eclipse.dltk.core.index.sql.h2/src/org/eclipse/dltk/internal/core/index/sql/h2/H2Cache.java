@@ -49,6 +49,7 @@ public class H2Cache {
 
 	private static final ILock fileLock = Job.getJobManager().newLock();
 	private static final Map<Integer, Map<Integer, File>> filesByContainer = new HashMap<Integer, Map<Integer, File>>();
+	private static final Map<Integer, Map<String, File>> filesByContainerAndPath = new HashMap<Integer, Map<String, File>>();
 
 	private static final ILock elementLock = Job.getJobManager().newLock();
 	private static final Map<Integer, Map<Integer, List<Element>>> elementsMap = new HashMap<Integer, Map<Integer, List<Element>>>();
@@ -89,15 +90,24 @@ public class H2Cache {
 	}
 
 	public static void addFile(File file) {
+		int containerId = file.getContainerId();
+
 		fileLock.acquire();
 		try {
-			int containerId = file.getContainerId();
-			Map<Integer, File> files = filesByContainer.get(containerId);
-			if (files == null) {
-				files = new HashMap<Integer, File>();
-				filesByContainer.put(containerId, files);
+			Map<Integer, File> filesById = filesByContainer.get(containerId);
+			if (filesById == null) {
+				filesById = new HashMap<Integer, File>();
+				filesByContainer.put(containerId, filesById);
 			}
-			files.put(file.getId(), file);
+			filesById.put(file.getId(), file);
+
+			Map<String, File> filesByPath = filesByContainerAndPath
+					.get(containerId);
+			if (filesByPath == null) {
+				filesByPath = new HashMap<String, File>();
+				filesByContainerAndPath.put(containerId, filesByPath);
+			}
+			filesByPath.put(file.getPath(), file);
 		} finally {
 			fileLock.release();
 		}
@@ -143,10 +153,23 @@ public class H2Cache {
 			String path) {
 		fileLock.acquire();
 		try {
-			File file = selectFileByContainerIdAndPath(containerId, path);
-			if (file != null) {
-				deleteFileById(file.getId());
+			File file = null;
+
+			Map<String, File> filesByPath = filesByContainerAndPath
+					.get(containerId);
+			if (filesByPath != null) {
+				file = filesByPath.remove(path);
 			}
+
+			if (file != null) {
+				Map<Integer, File> filesById = filesByContainer
+						.get(containerById);
+				if (filesById != null) {
+					filesById.remove(file.getId());
+				}
+			}
+
+			deleteElementsByFileId(file.getId());
 		} finally {
 			fileLock.release();
 		}
@@ -155,11 +178,22 @@ public class H2Cache {
 	public static void deleteFileById(int id) {
 		fileLock.acquire();
 		try {
+			File file = null;
+
 			Iterator<Map<Integer, File>> i = filesByContainer.values()
 					.iterator();
 			while (i.hasNext()) {
-				i.next().remove(id);
+				file = i.next().remove(id);
 			}
+
+			if (file != null) {
+				Map<String, File> filesByPath = filesByContainerAndPath
+						.get(file.getContainerId());
+				if (filesByPath != null) {
+					filesByPath.remove(file.getPath());
+				}
+			}
+
 			deleteElementsByFileId(id);
 		} finally {
 			fileLock.release();
@@ -169,13 +203,14 @@ public class H2Cache {
 	public static void deleteFilesByContainerId(int id) {
 		fileLock.acquire();
 		try {
-			Map<Integer, File> files = filesByContainer.remove(id);
-			if (files != null) {
-				Iterator<Integer> i = files.keySet().iterator();
+			Map<Integer, File> filesById = filesByContainer.remove(id);
+			if (filesById != null) {
+				Iterator<Integer> i = filesById.keySet().iterator();
 				while (i.hasNext()) {
 					deleteElementsByFileId(i.next());
 				}
 			}
+			filesByContainerAndPath.remove(id);
 		} finally {
 			fileLock.release();
 		}
@@ -229,20 +264,11 @@ public class H2Cache {
 			String path) {
 		fileLock.acquire();
 		try {
-			Map<Integer, File> files = filesByContainer.get(containerId);
-			if (files != null) {
-				Iterator<File> i = files.values().iterator();
-				while (i.hasNext()) {
-					File file = i.next();
-					if (file.getPath().equals(path)) {
-						return file;
-					}
-				}
-			}
+			Map<String, File> files = filesByContainerAndPath.get(containerId);
+			return (files == null) ? null : files.get(path);
 		} finally {
 			fileLock.release();
 		}
-		return null;
 	}
 
 	public static File selectFileById(int id) {

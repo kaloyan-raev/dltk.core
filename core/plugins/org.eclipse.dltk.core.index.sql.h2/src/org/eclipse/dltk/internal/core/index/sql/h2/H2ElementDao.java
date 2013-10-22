@@ -16,7 +16,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,12 +122,6 @@ public class H2ElementDao implements IElementDao {
 
 		statement.setInt(++param, fileId);
 		statement.addBatch();
-
-		if (!isReference) {
-			H2Cache.addElement(new Element(type, flags, offset, length,
-					nameOffset, nameLength, name, camelCaseName, metadata, doc,
-					qualifier, parent, fileId, isReference));
-		}
 	}
 
 	public void insert(Connection connection, int type, int flags, int offset,
@@ -191,18 +184,6 @@ public class H2ElementDao implements IElementDao {
 
 		long timeStamp = System.currentTimeMillis();
 		int count = 0;
-
-		if (!isReference && H2Cache.isLoaded()) {
-			Collection<Element> elements = H2Cache.searchElements(pattern,
-					matchRule, elementType, trueFlags, falseFlags, qualifier,
-					parent, filesId, containersId, natureId, limit);
-			if (elements != null && elements.size() > 0) {
-				for (Element element : elements) {
-					handler.handle(element);
-				}
-			}
-			return;
-		}
 
 		String tableName = getTableName(connection, elementType, natureId,
 				isReference);
@@ -364,9 +345,6 @@ public class H2ElementDao implements IElementDao {
 							length, nameOffset, nameLength,
 							modelManager.intern(name), camelCaseName, metadata,
 							doc, qualifier, parent, fileId, isReference);
-					if (!isReference) {
-						H2Cache.addElement(element);
-					}
 
 					handler.handle(element);
 				}

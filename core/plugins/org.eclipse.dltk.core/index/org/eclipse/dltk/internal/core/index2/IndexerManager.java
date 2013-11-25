@@ -40,7 +40,7 @@ public class IndexerManager {
 	private static final String ID_ATTR = "id"; //$NON-NLS-1$
 	private static final String TARGET_ID_ATTR = "targetId"; //$NON-NLS-1$
 
-	private static IConfigurationElement indexer;
+	private static AbstractIndexer indexer;
 	private static Map<String, Map<String, IConfigurationElement>> indexerParticipants = new HashMap<String, Map<String, IConfigurationElement>>();
 
 	static {
@@ -49,7 +49,13 @@ public class IndexerManager {
 		for (IConfigurationElement element : elements) {
 			String name = element.getName();
 			if (INDEXER_ATTR.equals(name)) {
-				indexer = element;
+				try {
+					indexer = (AbstractIndexer) element
+							.createExecutableExtension(CLASS_ATTR);
+					indexer.setId(element.getAttribute(ID_ATTR));
+				} catch (CoreException e) {
+					DLTKCore.error(e);
+				}
 				break;
 			}
 		}
@@ -71,21 +77,7 @@ public class IndexerManager {
 	}
 
 	public static IIndexer getIndexer() {
-		try {
-			if (indexer != null) {
-				AbstractIndexer instance = (AbstractIndexer) indexer
-						.createExecutableExtension(CLASS_ATTR);
-				instance.setId(indexer.getAttribute(ID_ATTR));
-
-				return instance;
-			}
-		} catch (CoreException e) {
-			if (DLTKCore.DEBUG) {
-				e.printStackTrace();
-			}
-			indexer = null;
-		}
-		return null;
+		return indexer;
 	}
 
 	public static IIndexerParticipant getIndexerParticipant(IIndexer indexer,
